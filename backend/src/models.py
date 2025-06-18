@@ -33,3 +33,14 @@ class File(Model):
 
     def __str__(self):
         return f"{self.name} ({self.size} bytes)"
+
+
+class Folder(Model):
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=255)
+    path = fields.CharField(max_length=1024)
+    owner = fields.ForeignKeyField("models.Account", related_name="folders")
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.path})"

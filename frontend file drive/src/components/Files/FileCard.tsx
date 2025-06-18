@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  File, 
-  Folder, 
-  Star, 
-  Share2, 
+import {
+  File,
+  Folder,
+  Star,
+  Share2,
   MoreVertical,
   Download,
-  Eye,
   Trash2,
   FileText,
   Image,
@@ -17,7 +16,7 @@ import {
   Archive,
   Shield,
   ShieldCheck,
-  Clock
+  Clock,
 } from 'lucide-react';
 import { FileItem } from '../../types';
 import { ShareModal } from './ShareModal';
@@ -33,16 +32,21 @@ interface FileCardProps {
 
 const getFileIcon = (file: FileItem) => {
   if (file.type === 'folder') return Folder;
-  
+
   if (!file.mimeType) return File;
-  
+
   if (file.mimeType.startsWith('image/')) return Image;
   if (file.mimeType.startsWith('video/')) return FileVideo;
   if (file.mimeType.startsWith('audio/')) return FileAudio;
   if (file.mimeType.includes('pdf')) return FileText;
-  if (file.mimeType.includes('text/') || file.mimeType.includes('javascript') || file.mimeType.includes('python')) return Code;
+  if (
+    file.mimeType.includes('text/') ||
+    file.mimeType.includes('javascript') ||
+    file.mimeType.includes('python')
+  )
+    return Code;
   if (file.mimeType.includes('zip') || file.mimeType.includes('archive')) return Archive;
-  
+
   return File;
 };
 
@@ -81,8 +85,70 @@ export const FileCard: React.FC<FileCardProps> = ({
   viewMode,
 }) => {
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
   const Icon = getFileIcon(file);
   const isFolder = file.type === 'folder';
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        actionMenuRef.current &&
+        !actionMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowActionsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const ActionsMenu = () => (
+    <div
+      ref={actionMenuRef}
+      className="absolute right-0 mt-2 w-32 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => {
+          console.log('Download', file.name);
+          setShowActionsMenu(false);
+        }}
+        className="w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center space-x-2"
+      >
+        <Download className="w-4 h-4" />
+        <span>Download</span>
+      </button>
+      <button
+        onClick={() => {
+          console.log('Delete', file.name);
+          setShowActionsMenu(false);
+        }}
+        className="w-full px-4 py-2 text-sm text-red-400 hover:bg-gray-700 flex items-center space-x-2"
+      >
+        <Trash2 className="w-4 h-4" />
+        <span>Delete</span>
+      </button>
+    </div>
+  );
+
+  const MoreButton = () => (
+    <div className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowActionsMenu((prev) => !prev);
+        }}
+        className="p-1 text-gray-400 hover:text-white rounded-md transition-colors"
+      >
+        <MoreVertical className="w-4 h-4" />
+      </button>
+      {showActionsMenu && <ActionsMenu />}
+    </div>
+  );
 
   if (viewMode === 'list') {
     return (
@@ -99,14 +165,14 @@ export const FileCard: React.FC<FileCardProps> = ({
           onClick={() => onSelect(file.id)}
           whileHover={{ y: -2 }}
         >
-          {/* Icon */}
-          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
-            isFolder ? 'bg-cyber-600/20 text-cyber-400' : 'bg-gray-700/50 text-gray-300'
-          }`}>
+          <div
+            className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+              isFolder ? 'bg-cyber-600/20 text-cyber-400' : 'bg-gray-700/50 text-gray-300'
+            }`}
+          >
             <Icon className="w-5 h-5" />
           </div>
 
-          {/* Name */}
           <div className="flex-1 min-w-0 ml-4">
             <div className="flex items-center space-x-2">
               <h3 className="text-white font-medium truncate">{file.name}</h3>
@@ -120,17 +186,14 @@ export const FileCard: React.FC<FileCardProps> = ({
             )}
           </div>
 
-          {/* Size */}
           <div className="flex-shrink-0 w-20 text-right">
             <span className="text-sm text-gray-400">{formatFileSize(file.size)}</span>
           </div>
 
-          {/* Modified */}
           <div className="flex-shrink-0 w-24 text-right">
             <span className="text-sm text-gray-400">{formatDate(file.modifiedAt)}</span>
           </div>
 
-          {/* Actions */}
           <div className="flex-shrink-0 flex items-center space-x-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => {
@@ -143,7 +206,7 @@ export const FileCard: React.FC<FileCardProps> = ({
             >
               <Star className="w-4 h-4" fill={file.isStarred ? 'currentColor' : 'none'} />
             </button>
-            
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -153,10 +216,8 @@ export const FileCard: React.FC<FileCardProps> = ({
             >
               <Share2 className="w-4 h-4" />
             </button>
-            
-            <button className="p-1 text-gray-400 hover:text-white rounded-md transition-colors">
-              <MoreVertical className="w-4 h-4" />
-            </button>
+
+            <MoreButton />
           </div>
         </motion.div>
 
@@ -184,32 +245,29 @@ export const FileCard: React.FC<FileCardProps> = ({
         whileHover={{ y: -4, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        {/* File Icon */}
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${
-          isFolder ? 'bg-cyber-600/20 text-cyber-400' : 'bg-gray-700/50 text-gray-300'
-        }`}>
+        <div
+          className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 ${
+            isFolder ? 'bg-cyber-600/20 text-cyber-400' : 'bg-gray-700/50 text-gray-300'
+          }`}
+        >
           <Icon className="w-6 h-6" />
         </div>
 
-        {/* File Info */}
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <h3 className="text-white font-medium truncate flex-1">{file.name}</h3>
             {getEncryptionIcon(file.encryptionStatus)}
           </div>
-          
+
           <div className="flex items-center justify-between text-xs text-gray-400">
             <span>{formatFileSize(file.size)}</span>
             <span>{formatDate(file.modifiedAt)}</span>
           </div>
 
           {file.version > 1 && (
-            <div className="text-xs text-quantum-400">
-              v{file.version}
-            </div>
+            <div className="text-xs text-quantum-400">v{file.version}</div>
           )}
 
-          {/* AI Suggestions */}
           {file.aiSuggestions && file.aiSuggestions.length > 0 && (
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-neon-400 rounded-full animate-pulse" />
@@ -218,7 +276,6 @@ export const FileCard: React.FC<FileCardProps> = ({
           )}
         </div>
 
-        {/* Actions */}
         <div className="absolute top-3 right-3 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
@@ -231,7 +288,7 @@ export const FileCard: React.FC<FileCardProps> = ({
           >
             <Star className="w-4 h-4" fill={file.isStarred ? 'currentColor' : 'none'} />
           </button>
-          
+
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -241,16 +298,13 @@ export const FileCard: React.FC<FileCardProps> = ({
           >
             <Share2 className="w-4 h-4" />
           </button>
-          
-          <button className="p-1 text-gray-400 hover:text-white rounded-md transition-colors">
-            <MoreVertical className="w-4 h-4" />
-          </button>
+
+          <MoreButton />
         </div>
 
-        {/* Shared Indicator */}
         {file.isShared && (
           <div className="absolute bottom-3 right-3">
-            <Share2 className="w-4 h-4 text-blue-400" />
+            <p>Shared</p>
           </div>
         )}
       </motion.div>

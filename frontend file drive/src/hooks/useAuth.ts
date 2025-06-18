@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AuthState, User } from '../types';
 
-// Mock authentication - replace with real API calls
 export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
@@ -9,110 +8,128 @@ export const useAuth = () => {
     loading: true,
   });
 
+  const fetchUserProfile = useCallback(async (token: string) => {
+    try {
+      const response = await fetch('http://127.0.0.1:4000/auth/profile', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile');
+      }
+
+      const profileData = await response.json();
+      return {
+        id: profileData.id.toString(),
+        name: profileData.username,
+        email: profileData.email,
+        storageUsed: 0, // You'll need to get these from your API
+        storageLimit: 15 * 1024 ** 3,
+        aiApiKey: '',
+        quantumKeysEnabled: false,
+        createdAt: new Date()
+      };
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      throw error;
+    }
+  }, []);
+
   useEffect(() => {
-    // Check for existing session
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('quantum_token');
+        const token = localStorage.getItem('token');
         if (token) {
-          // Simulate API call to verify token
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const mockUser: User = {
-            id: '1',
-            name: 'Alex Chen',
-            email: 'alex@quantumdrive.com',
-            storageUsed: 45 * 1024 ** 3,
-            storageLimit: 100 * 1024 ** 3,
-            aiApiKey: '',
-            quantumKeysEnabled: true,
-            createdAt: new Date('2024-01-01'),
-          };
-          
+          const user = await fetchUserProfile(token);
           setAuthState({
             isAuthenticated: true,
-            user: mockUser,
+            user,
             loading: false,
           });
         } else {
           setAuthState(prev => ({ ...prev, loading: false }));
         }
       } catch (error) {
+        localStorage.removeItem('token');
         setAuthState(prev => ({ ...prev, loading: false }));
       }
     };
 
     checkAuth();
-  }, []);
+  }, [fetchUserProfile]);
 
   const login = useCallback(async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, loading: true }));
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Replace with your actual login API call
+      const result = await loginUser(email, password); // Your existing login function
       
-      const mockUser: User = {
-        id: '1',
-        name: email.split('@')[0],
-        email,
-        storageUsed: 45 * 1024 ** 3,
-        storageLimit: 100 * 1024 ** 3,
-        aiApiKey: '',
-        quantumKeysEnabled: true,
-        createdAt: new Date(),
-      };
+      if (result?.success === true || result?.message?.toLowerCase().includes('login successful')) {
+        const token = result.access_token || result.data?.access_token;
+        if (token) {
+          localStorage.setItem('token', token);
+          const user = await fetchUserProfile(token);
+          
+          setAuthState({
+            isAuthenticated: true,
+            user,
+            loading: false,
+          });
+          
+          return { success: true, data: { ...result, user } };
+        }
+      }
       
-      localStorage.setItem('quantum_token', 'mock_token_' + Date.now());
-      
-      setAuthState({
-        isAuthenticated: true,
-        user: mockUser,
-        loading: false,
-      });
-      
-      return { success: true };
+      throw new Error(result?.message || 'Login failed');
     } catch (error) {
       setAuthState(prev => ({ ...prev, loading: false }));
-      return { success: false, error: 'Invalid credentials' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Login failed'
+      };
     }
-  }, []);
+  }, [fetchUserProfile]);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     setAuthState(prev => ({ ...prev, loading: true }));
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Replace with your actual register API call
+      const result = await registerUser(name, email, password); // Your existing register function
       
-      const mockUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        email,
-        storageUsed: 0,
-        storageLimit: 15 * 1024 ** 3, // 15GB for new users
-        aiApiKey: '',
-        quantumKeysEnabled: false,
-        createdAt: new Date(),
-      };
+      if (result?.success === true || result?.message?.toLowerCase().includes('registration successful')) {
+        const token = result.access_token || result.data?.access_token;
+        if (token) {
+          localStorage.setItem('token', token);
+          const user = await fetchUserProfile(token);
+          
+          setAuthState({
+            isAuthenticated: true,
+            user,
+            loading: false,
+          });
+          
+          return { success: true, data: { ...result, user } };
+        }
+      }
       
-      localStorage.setItem('quantum_token', 'mock_token_' + Date.now());
-      
-      setAuthState({
-        isAuthenticated: true,
-        user: mockUser,
-        loading: false,
-      });
-      
-      return { success: true };
+      throw new Error(result?.message || 'Registration failed');
     } catch (error) {
       setAuthState(prev => ({ ...prev, loading: false }));
-      return { success: false, error: 'Registration failed' };
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Registration failed'
+      };
     }
-  }, []);
+  }, [fetchUserProfile]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('quantum_token');
+    localStorage.removeItem('token');
     setAuthState({
       isAuthenticated: false,
       user: null,

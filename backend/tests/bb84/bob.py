@@ -7,7 +7,7 @@ def generate_bases(n):
 def main():
     # First check if Alice has submitted data
     try:
-        check_response = requests.get("http://localhost:8000/check_alice")
+        check_response = requests.get("http://localhost:4000/quantum/check_alice")
         if not check_response.json().get("alice_ready"):
             print("Error: Alice hasn't submitted data yet")
             return
@@ -22,13 +22,13 @@ def main():
     # Submit to server
     try:
         response = requests.post(
-            "http://localhost:8000/bob/submit",
+            "http://localhost:4000/quantum/bob/submit",
             json={"bases": bases}
         )
         print("Bob submission:", response.json())
         
         # Get the generated key
-        key_response = requests.get("http://localhost:8000/generate_key")
+        key_response = requests.get("http://localhost:4000/quantum/generate_key")
         key_data = key_response.json()
         
         print("\nAlice's bases:", key_data["alice_bases"])

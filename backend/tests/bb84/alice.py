@@ -12,14 +12,14 @@ def main():
     
     # Submit to server
     response = requests.post(
-        "http://localhost:8000/alice/submit",
+        "http://localhost:4000/quantum/alice/submit",
         json={"bits": bits, "bases": bases}
     )
     print("Alice submission:", response.json())
     
     # Wait for Bob to submit and get key
     input("Press Enter after Bob has submitted his bases...")
-    key_response = requests.get("http://localhost:8000/generate_key")
+    key_response = requests.get("http://localhost:4000/quantum/generate_key")
     key_data = key_response.json()
     
     print("\nAlice's bases:", key_data["alice_bases"])

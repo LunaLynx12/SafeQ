@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from qiskit import QuantumCircuit, Aer, execute
 
-app = FastAPI()
+# TODO: generate dilithium key when user registers
+# TODO: function to verify message authencity using dilithium public key
+
+router = APIRouter(prefix="/quantum", tags=["Quantum"])
 
 # Storage for client data
 alice_data = {}
@@ -15,12 +18,12 @@ class PhotonData(BaseModel):
 class BasisData(BaseModel):
     bases: str
 
-@app.get("/quantum/check_alice")
+@router.get("/check_alice")
 async def check_alice():
     """Check if Alice has submitted data"""
     return {"alice_ready": bool(alice_data)}
 
-@app.post("/quantum/alice/submit")
+@router.post("/alice/submit")
 async def alice_submit(data: PhotonData):
     """Alice submits her initial bits and bases"""
     alice_data.clear()
@@ -30,7 +33,7 @@ async def alice_submit(data: PhotonData):
     })
     return {"status": "Alice data received"}
 
-@app.post("/quantum/bob/submit")
+@router.post("/bob/submit")
 async def bob_submit(data: BasisData):
     """Bob submits his measurement bases"""
     if not alice_data:
@@ -47,7 +50,7 @@ async def bob_submit(data: BasisData):
     })
     return {"status": "Bob data received"}
 
-@app.get("/quantum/generate_key")
+@router.get("/generate_key")
 async def generate_key():
     """Generate shared key after both parties submitted data"""
     if not alice_data or not bob_data:
@@ -95,7 +98,3 @@ async def generate_key():
         "sifted_key": ''.join(sifted_key),
         "shared_key": key_hex
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=4000)

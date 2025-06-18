@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from tortoise.contrib.fastapi import register_tortoise
@@ -12,6 +11,7 @@ from routes import tests_route as tests_routes
 from routes import auth_route as auth_routes
 from routes import files_route as files_auths
 from routes import messages_route as messages_routes
+from routes import bb84_route as bb84_routes
 
 
 @asynccontextmanager
@@ -26,6 +26,7 @@ app.include_router(tests_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(files_auths.router)
 app.include_router(messages_routes.router)
+app.include_router(bb84_routes.router)
 
 # Add CORS middleware
 app.add_middleware(

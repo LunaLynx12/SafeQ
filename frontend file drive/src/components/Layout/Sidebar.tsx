@@ -4,12 +4,10 @@ import {
   Home, 
   Star, 
   Clock, 
-  Share2, 
-  Trash2, 
+  Share2,  
   Settings, 
   HardDrive,
   Zap,
-  Users,
   Shield
 } from 'lucide-react';
 
@@ -25,9 +23,7 @@ const menuItems = [
   { id: 'starred', label: 'Starred', icon: Star },
   { id: 'recent', label: 'Recent', icon: Clock },
   { id: 'shared', label: 'Shared', icon: Share2 },
-  { id: 'ai-insights', label: 'AI Insights', icon: Zap },
-  { id: 'team', label: 'Team', icon: Users },
-  { id: 'trash', label: 'Trash', icon: Trash2 },
+  { id: 'ai-insights', label: 'AI Insights', icon: Zap },,
 ];
 
 const bottomItems = [

@@ -30,6 +30,19 @@ class File(Model):
     owner = fields.ForeignKeyField("models.Account", related_name="files")
     size = fields.IntField(default=0)
     created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)  # Track last modification
+    is_starred = fields.BooleanField(default=False)
+    is_shared = fields.BooleanField(default=False)
+    mime_type = fields.CharField(max_length=100, default="")
+    version = fields.IntField(default=1)
+    encryption_status = fields.CharField(
+        max_length=20,
+        default="unencrypted",
+        choices=["unencrypted", "encrypted", "processing"]
+    )
+    quantum_key_id = fields.CharField(max_length=36, null=True)
+    ai_suggestions = fields.JSONField(default=list)
+    share_links = fields.JSONField(default=list)
 
     def __str__(self):
         return f"{self.name} ({self.size} bytes)"

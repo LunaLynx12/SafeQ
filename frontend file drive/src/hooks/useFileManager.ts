@@ -4,6 +4,7 @@ import axios from 'axios';
 
 // Base API URL
 const API_BASE_URL = 'http://127.0.0.1:4000/drive/get';
+const UPLOAD_API_URL = 'http://127.0.0.1:4000/drive/save';
 
 export const useFileManager = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -95,7 +96,17 @@ export const useFileManager = () => {
 
   const recentFiles = useMemo(() => {
     return [...files]
-      .sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
+      .sort((a, b) => {
+        if (!(a.modifiedAt instanceof Date)) {
+          console.warn('Invalid modifiedAt for file', a);
+          return 0;
+        }
+        if (!(b.modifiedAt instanceof Date)) {
+          console.warn('Invalid modifiedAt for file', b);
+          return 0;
+        }
+        return b.modifiedAt.getTime() - a.modifiedAt.getTime();
+      })
       .slice(0, 10);
   }, [files]);
 
@@ -113,29 +124,38 @@ export const useFileManager = () => {
   const uploadFiles = useCallback(async (fileList: FileList) => {
     setIsUploading(true);
 
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const formData = new FormData();
 
-    const newFiles: FileItem[] = Array.from(fileList).map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      type: 'file' as const,
-      size: file.size,
-      mimeType: file.type,
-      createdAt: new Date(),
-      modifiedAt: new Date(),
-      isStarred: false,
-      isShared: false,
-      owner: 'you',
-      path: `/${file.name}`,
-      version: 1,
-      encryptionStatus: 'processing',
-      aiSuggestions: [],
-      shareLinks: [],
-    }));
+    // Append each file to the form data
+    for (let i = 0; i < fileList.length; i++) {
+      formData.append('files', fileList[i]);
+    }
 
-    setFiles(prev => [...prev, ...newFiles]);
-    setIsUploading(false);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token missing');
+      }
+
+      const response = await axios.post(
+        UPLOAD_API_URL,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      // Add the uploaded files to state
+      setFiles(prev => [...prev, ...response.data.newFiles]);
+    } catch (err) {
+      console.error('Failed to upload files:', err);
+      setError('Failed to upload files');
+    } finally {
+      setIsUploading(false);
+    }
   }, []);
 
   const createFolder = useCallback((name: string) => {
@@ -159,7 +179,7 @@ export const useFileManager = () => {
     setFiles(prev => [...prev, newFolder]);
   }, []);
 
-  const createShareLink = useCallback(async (fileId: string, options: ShareLinkOptions): Promise<ShareLink> => {
+  const createShareLink = useCallback(async (fileId: string, options: any): Promise<ShareLink> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
 

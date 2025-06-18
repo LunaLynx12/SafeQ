@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Plus, 
-  Upload, 
-  Grid3X3, 
-  List, 
+import {
+  Search,
+  Plus,
+  Upload,
+  Grid3X3,
+  List,
   SlidersHorizontal,
   Bell,
   User,
@@ -13,7 +13,7 @@ import {
   Sun,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
 } from 'lucide-react';
 import { ViewMode, User as UserType } from '../../types';
 
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       className="bg-gray-900/30 backdrop-blur-xl border-b border-gray-800/50 px-6 py-4"
@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Upload className="w-4 h-4" />
               <span>Upload</span>
             </motion.button>
-            
+
             <motion.button
               onClick={onCreateFolder}
               className="p-2 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white rounded-lg transition-colors"
@@ -101,8 +101,8 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => onViewModeChange({ ...viewMode, type: 'grid' })}
               className={`p-2 rounded-md transition-colors ${
-                viewMode.type === 'grid' 
-                  ? 'bg-quantum-600 text-white' 
+                viewMode.type === 'grid'
+                  ? 'bg-quantum-600 text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -111,8 +111,8 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => onViewModeChange({ ...viewMode, type: 'list' })}
               className={`p-2 rounded-md transition-colors ${
-                viewMode.type === 'list' 
-                  ? 'bg-quantum-600 text-white' 
+                viewMode.type === 'list'
+                  ? 'bg-quantum-600 text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -166,13 +166,15 @@ export const Header: React.FC<HeaderProps> = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute right-0 mt-2 w-48 bg-gray-900/90 backdrop-blur-xl border border-gray-800/50 rounded-xl shadow-lg z-50"
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800/50 rounded-xl shadow-lg z-50"
+                onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-3 border-b border-gray-800/50">
                   <div className="text-sm font-medium text-white">{user?.name}</div>
                   <div className="text-xs text-gray-400">{user?.email}</div>
                 </div>
-                
+
                 <div className="p-2">
                   <button
                     onClick={() => {
@@ -184,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       onLogout();

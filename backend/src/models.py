@@ -30,7 +30,7 @@ class File(Model):
     owner = fields.ForeignKeyField("models.Account", related_name="files")
     size = fields.IntField(default=0)
     created_at = fields.DatetimeField(auto_now_add=True)
-    updated_at = fields.DatetimeField(auto_now=True)  # Track last modification
+    updated_at = fields.DatetimeField(auto_now=True)
     is_starred = fields.BooleanField(default=False)
     is_shared = fields.BooleanField(default=False)
     mime_type = fields.CharField(max_length=100, default="")

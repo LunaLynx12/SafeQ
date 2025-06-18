@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from tortoise.exceptions import DoesNotExist
 from models import Account, Folder
 from utils.security import verify_password, get_password_hash
-from utils.jwt import create_access_token
+from utils.jwt import create_access_token, get_current_user
 import config
 import os
 
@@ -56,3 +56,11 @@ async def login_user(request: LoginRequest):
         }
     except DoesNotExist:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+@router.get("/profile")
+async def get_profile(current_user: Account = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email
+    }

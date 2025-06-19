@@ -40,6 +40,18 @@ class ConversationMessage(BaseModel):
     receiver_name: str
     created_at: datetime
 
+class QuantumKeyData(BaseModel):
+        generated_key_length: int
+        shared_key: str
+        alice_bits_sample: str
+        alice_bases_sample: str
+        bob_bases_sample: str
+        matching_bases_count: int
+
+class CombinedResponse(BaseModel):
+    quantum_key_data: QuantumKeyData
+    conversation_messages: list[ConversationMessage]
+
 
 @router.post("/send_message_demo")
 async def send_message_demo():
@@ -197,7 +209,7 @@ async def get_conversations_by_user_id(user_id: int):
         for user in users
     ]
 
-@router.get("/conversation_with/{other_user_id}", response_model=List[ConversationMessage])
+@router.get("/conversation_with/{other_user_id}", response_model=CombinedResponse)
 async def get_conversation_with_user(
     other_user_id: int,
     current_user: Account = Depends(get_current_user)
@@ -213,14 +225,71 @@ async def get_conversation_with_user(
         (Q(sender_id=other_user_id) & Q(receiver_id=current_user.id))
     ).order_by("created_at").prefetch_related("sender_id", "receiver_id")
 
-    # Returnează mesajele formatate
-    return [
-        ConversationMessage(
-            id=msg.id,
-            content=msg.content,
-            sender_name=msg.sender_id.username,
-            receiver_name=msg.receiver_id.username,
-            created_at=msg.created_at
-        )
-        for msg in messages
+    import secrets
+    from qiskit import QuantumCircuit, Aer, execute
+    n = 128 * 2  # Generate extra bits to account for basis mismatches
+    alice_bits = ''.join(secrets.choice('01') for _ in range(n))
+    alice_bases = ''.join(secrets.choice('zx') for _ in range(n))  # z=computational, x=Hadamard
+    
+    # Generate random bases for Bob
+    bob_bases = ''.join(secrets.choice('zx') for _ in range(n))
+    
+    # Build and simulate quantum circuit
+    qc = QuantumCircuit(n, n)
+    
+    # Alice prepares her qubits
+    for i in range(n):
+        if alice_bits[i] == '1':
+            qc.x(i)
+        if alice_bases[i] == 'x':
+            qc.h(i)
+    
+    # Bob measures
+    for i in range(n):
+        if bob_bases[i] == 'x':
+            qc.h(i)
+    
+    qc.measure(range(n), range(n))
+    
+    # Simulate
+    simulator = Aer.get_backend('qasm_simulator')
+    result = execute(qc, simulator, shots=1).result()
+    counts = result.get_counts(qc)
+    measured_bits = list(counts.keys())[0][::-1]  # Reverse for Qiskit endianness
+    
+    # Sift key (keep bits where bases match)
+    sifted_key = [
+        measured_bits[i]
+        for i in range(n)
+        if alice_bases[i] == bob_bases[i]
     ]
+    
+    # Convert to bytes
+    key_bytes = bytes([int(''.join(sifted_key[i:i+8]), 2) for i in range(0, len(sifted_key), 8)])
+    key_hex = key_bytes.hex()
+
+    print("Secred key generated:", key_hex)
+    
+    
+
+    # Then in your endpoint:
+    return CombinedResponse(
+        quantum_key_data={
+            "generated_key_length": len(sifted_key),
+            "shared_key": key_hex,
+            "alice_bits_sample": alice_bits,
+            "alice_bases_sample": alice_bases,
+            "bob_bases_sample": bob_bases,
+            "matching_bases_count": len(sifted_key)
+        },
+        conversation_messages=[
+            ConversationMessage(
+                id=msg.id,
+                content=msg.content,
+                sender_name=msg.sender_id.username,
+                receiver_name=msg.receiver_id.username,
+                created_at=msg.created_at
+            )
+            for msg in messages
+        ]
+    )

@@ -29,6 +29,17 @@ class ConversationPreview(BaseModel):
     last_message: str
     timestamp: datetime
 
+class ConversationUser(BaseModel):
+    user_id: int
+    username: str
+
+class ConversationMessage(BaseModel):
+    id: int
+    content: str
+    sender_name: str
+    receiver_name: str
+    created_at: datetime
+
 
 @router.post("/send_message_demo")
 async def send_message_demo():
@@ -128,6 +139,87 @@ async def get_messages_with_user(
             sender_id=msg.sender_id_id,
             receiver_id=msg.receiver_id_id,
             content=msg.content,
+            created_at=msg.created_at
+        )
+        for msg in messages
+    ]
+
+# @router.get("/conversations", response_model=List[ConversationUser])
+# async def get_conversations(current_user: Account = Depends(get_current_user)):
+#     user_id = current_user.id
+
+#     # Găsește toate mesajele unde userul e sender sau receiver
+#     messages = await Message.filter(
+#         Q(sender_id=user_id) | Q(receiver_id=user_id)
+#     ).all()
+
+#     # Extrage ID-urile celorlalți utilizatori
+#     other_user_ids = set()
+#     for msg in messages:
+#         if msg.sender_id_id != user_id:
+#             other_user_ids.add(msg.sender_id_id)
+#         if msg.receiver_id_id != user_id:
+#             other_user_ids.add(msg.receiver_id_id)
+
+#     # Obține conturile acestor utilizatori
+#     users = await Account.filter(id__in=other_user_ids).all()
+
+#     return [
+#         ConversationUser(user_id=user.id, username=user.username)
+#         for user in users
+#     ]
+
+@router.get("/conversations/{user_id}", response_model=List[ConversationUser])
+async def get_conversations_by_user_id(user_id: int):
+    # Verificăm dacă userul există
+    user = await Account.get_or_none(id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Găsim toate mesajele unde userul e implicat
+    messages = await Message.filter(
+        Q(sender_id=user_id) | Q(receiver_id=user_id)
+    ).all()
+
+    # Extragem ceilalți useri implicați în conversații
+    other_user_ids = set()
+    for msg in messages:
+        if msg.sender_id_id != user_id:
+            other_user_ids.add(msg.sender_id_id)
+        if msg.receiver_id_id != user_id:
+            other_user_ids.add(msg.receiver_id_id)
+
+    # Îi aducem din baza de date
+    users = await Account.filter(id__in=other_user_ids).all()
+
+    return [
+        ConversationUser(user_id=user.id, username=user.username)
+        for user in users
+    ]
+
+@router.get("/conversation_with/{other_user_id}", response_model=List[ConversationMessage])
+async def get_conversation_with_user(
+    other_user_id: int,
+    current_user: Account = Depends(get_current_user)
+):
+    # Verifică dacă celălalt utilizator există
+    other_user = await Account.get_or_none(id=other_user_id)
+    if not other_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Găsește toate mesajele între current_user și other_user
+    messages = await Message.filter(
+        (Q(sender_id=current_user.id) & Q(receiver_id=other_user_id)) |
+        (Q(sender_id=other_user_id) & Q(receiver_id=current_user.id))
+    ).order_by("created_at").prefetch_related("sender_id", "receiver_id")
+
+    # Returnează mesajele formatate
+    return [
+        ConversationMessage(
+            id=msg.id,
+            content=msg.content,
+            sender_name=msg.sender_id.username,
+            receiver_name=msg.receiver_id.username,
             created_at=msg.created_at
         )
         for msg in messages

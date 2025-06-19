@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Search, Plus, Settings, LogOut, User, Users } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Search, Plus, Settings, LogOut, User, Users } from "lucide-react";
 
 interface Participant {
   id: number;
   name: string;
   avatar?: string;
-  status?: 'online' | 'offline' | 'away';
+  status?: "online" | "offline" | "away";
 }
 
 interface Message {
@@ -14,7 +14,7 @@ interface Message {
   senderId: number;
   text: string;
   timestamp: string;
-  status?: 'sent' | 'delivered' | 'read';
+  status?: "sent" | "delivered" | "read";
 }
 
 interface Conversation {
@@ -36,7 +36,6 @@ interface ContactsSidebarProps {
     id: string;
     email: string;
     username?: string;
-    token?: string;
   };
   onLogout: () => void;
 }
@@ -48,7 +47,43 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   user,
   onLogout,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [profileUsername, setProfileUsername] = useState<string>("");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // Fetch username from profile endpoint
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("http://localhost:4000/auth/profile", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const profileData = await response.json();
+          setProfileUsername(profileData.username || profileData.name || "");
+        } else {
+          console.error("Failed to fetch profile:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const filteredConversations = conversations.filter((conversation) =>
     conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -56,15 +91,19 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case 'online':
-        return 'bg-green-500';
-      case 'away':
-        return 'bg-yellow-500';
-      case 'offline':
+      case "online":
+        return "bg-green-500";
+      case "away":
+        return "bg-yellow-500";
+      case "offline":
       default:
-        return 'bg-slate-500';
+        return "bg-slate-500";
     }
   };
+
+  // Determine what to display as the user identifier
+  const displayName = profileUsername || user.username || user.email;
+  const displayStatus = isLoadingProfile ? "Loading..." : "Online";
 
   return (
     <div className="flex flex-col h-full bg-black/20 border-r border-white/10">
@@ -77,17 +116,17 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
             </div>
             <div>
               <h2 className="font-semibold text-white text-sm">
-                {user.username || user.email}
+                {displayName}
               </h2>
-              <p className="text-xs text-slate-400">Online</p>
+              <p className="text-xs text-slate-400">{displayStatus}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-1">
             <button className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
               <Settings className="h-4 w-4" />
             </button>
-            <button 
+            <button
               onClick={onLogout}
               className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             >
@@ -120,8 +159,8 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
               onClick={() => onSelectConversation(conversation.id)}
               className={`p-3 rounded-lg cursor-pointer transition-all duration-200 mb-1 ${
                 selectedConversationId === conversation.id
-                  ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30'
-                  : 'hover:bg-white/5'
+                  ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30"
+                  : "hover:bg-white/5"
               }`}
             >
               <div className="flex items-center space-x-3">
@@ -140,15 +179,16 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
                       <User className="h-6 w-6 text-white" />
                     )}
                   </div>
-                  
+
                   {/* Status indicator for individual chats */}
-                  {!conversation.isGroup && conversation.participants[0]?.status && (
-                    <div
-                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${getStatusColor(
-                        conversation.participants[0].status
-                      )}`}
-                    />
-                  )}
+                  {!conversation.isGroup &&
+                    conversation.participants[0]?.status && (
+                      <div
+                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${getStatusColor(
+                          conversation.participants[0].status
+                        )}`}
+                      />
+                    )}
                 </div>
 
                 {/* Conversation Info */}
@@ -163,16 +203,17 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-slate-400 truncate">
                       {conversation.lastMessage}
                     </p>
-                    {conversation.unreadCount && conversation.unreadCount > 0 && (
-                      <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5 min-w-[1.25rem] text-center flex-shrink-0">
-                        {conversation.unreadCount}
-                      </span>
-                    )}
+                    {conversation.unreadCount &&
+                      conversation.unreadCount > 0 && (
+                        <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5 min-w-[1.25rem] text-center flex-shrink-0">
+                          {conversation.unreadCount}
+                        </span>
+                      )}
                   </div>
                 </div>
               </div>

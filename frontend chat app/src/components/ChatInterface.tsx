@@ -196,12 +196,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative z-10 flex w-full h-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl"
       >
-        {/* Decorative corner elements */}
-        <div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full animate-pulse delay-300" />
-        <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-green-500 rounded-full animate-pulse delay-700" />
-        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-pink-500 rounded-full animate-pulse delay-1000" />
-
         {/* Contacts Sidebar - Fixed width */}
         <div className="w-80 flex-shrink-0 h-full">
           <ContactsSidebar

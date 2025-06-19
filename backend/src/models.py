@@ -21,6 +21,14 @@ class Message(Model):
 
     def __str__(self):
         return f"From {self.sender_id} to {self.receiver_id}: {self.content[:20]}"
+    
+
+def write_message(sender: Account, receiver: Account, content: str):
+    """
+    Utility function to create and save a message.
+    """
+    message = Message(sender_id=sender, receiver_id=receiver, content=content)
+    return message.save()
 
 
 class File(Model):

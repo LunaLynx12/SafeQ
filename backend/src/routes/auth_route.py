@@ -64,3 +64,9 @@ async def get_profile(current_user: Account = Depends(get_current_user)):
         "username": current_user.username,
         "email": current_user.email
     }
+
+@router.get("/get_users")
+async def get_users(current_user: Account = Depends(get_current_user)):
+    # For now, just fetch all users
+    users = await Account.all().values("id", "username", "email")
+    return {"users": users}

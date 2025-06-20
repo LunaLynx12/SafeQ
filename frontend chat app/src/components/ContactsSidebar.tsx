@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Settings, LogOut, User, Check, X } from "lucide-react";
 
@@ -70,7 +70,6 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
           }
         );
         const data = await res.json();
-        console.log("Fetched users:", data); // Debug log
         setUsers(data);
       } catch (err) {
         console.error("Failed to fetch users", err);
@@ -81,23 +80,36 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   };
 
   const handleStartChat = async (otherUserId: number) => {
+    if (!otherUserId || typeof otherUserId !== "number") {
+      console.error("Invalid otherUserId:", otherUserId);
+      return;
+    }
     try {
       const token = localStorage.getItem("auth_token");
       const res = await fetch(
-        `http://localhost:4000/messages/start_conversation/${otherUserId}`,
+        `http://localhost:4000/messages/start_conversation`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+            other_user_id: otherUserId,
+          }),
         }
       );
 
       if (!res.ok) throw new Error("Failed to create conversation");
 
       const newConversation = await res.json();
-      onSelectConversation(newConversation.id); // Navigate to the newly created convo
-      setIsUserListOpen(false); // Close the modal
+      if (newConversation.receiver_id) {
+        onSelectConversation(newConversation.receiver_id);
+      } else {
+        console.warn("No conversation ID received from backend");
+      }
+
+      setIsUserListOpen(false); // Close modal
     } catch (err) {
       console.error("Error starting chat:", err);
     }

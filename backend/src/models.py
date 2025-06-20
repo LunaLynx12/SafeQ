@@ -7,6 +7,9 @@ class Account(Model):
     username = fields.CharField(max_length=50, unique=True)
     email = fields.CharField(max_length=100, unique=True)
     password_hash = fields.CharField(max_length=128)
+    kyber_public_key = fields.BinaryField(null=True)  # Store public key
+    kyber_private_key_enc = fields.BinaryField(null=True)  # Encrypted private key
+    kyber_salt = fields.BinaryField(null=True)  # Salt for key derivation
 
     def __str__(self):
         return self.username
@@ -51,6 +54,9 @@ class File(Model):
     quantum_key_id = fields.CharField(max_length=36, null=True)
     ai_suggestions = fields.JSONField(default=list)
     share_links = fields.JSONField(default=list)
+    encryption_key_ciphertext = fields.BinaryField(null=True)  # Stores Kyber-encrypted file key
+    nonce = fields.BinaryField(null=True)  # For AES-GCM
+    tag = fields.BinaryField(null=True)  # For AES-GCM
 
     def __str__(self):
         return f"{self.name} ({self.size} bytes)"

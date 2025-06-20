@@ -5,6 +5,8 @@ from models import Account, Message, write_message
 from utils.jwt import get_current_user
 from datetime import datetime
 from typing import List
+from pathlib import Path
+import subprocess
 
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
@@ -38,6 +40,17 @@ class ConversationMessage(BaseModel):
     content: str
     sender_name: str
     receiver_name: str
+    created_at: datetime
+
+class UserPreview(BaseModel):
+    id: int
+    username: str
+
+class StartConversationResponse(BaseModel):
+    message_id: int
+    sender_id: int
+    receiver_id: int
+    content: str
     created_at: datetime
 
 
@@ -202,10 +215,13 @@ async def get_conversation_with_user(
     other_user_id: int,
     current_user: Account = Depends(get_current_user)
 ):
+
     # Verifică dacă celălalt utilizator există
     other_user = await Account.get_or_none(id=other_user_id)
     if not other_user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+
 
     # Găsește toate mesajele între current_user și other_user
     messages = await Message.filter(
@@ -224,3 +240,65 @@ async def get_conversation_with_user(
         )
         for msg in messages
     ]
+
+
+@router.get("/available_users/{user_id}", response_model=List[UserPreview])
+async def get_available_users_for_new_conversation(user_id: int):
+    # Verificăm dacă userul există
+    user = await Account.get_or_none(id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Găsim toate ID-urile userilor cu care a comunicat deja
+    messaged_user_ids = await Message.filter(
+        Q(sender_id=user_id) | Q(receiver_id=user_id)
+    ).distinct().values_list("sender_id_id", "receiver_id_id", flat=False)
+
+    talked_to_ids = set()
+    for sender, receiver in messaged_user_ids:
+        if sender != user_id:
+            talked_to_ids.add(sender)
+        if receiver != user_id:
+            talked_to_ids.add(receiver)
+
+    # Returnăm userii care nu sunt el însuși și nu sunt în lista de conversații
+    users = await Account.exclude(id=user_id).exclude(id__in=talked_to_ids)
+
+    return [UserPreview(id=u.id, username=u.username) for u in users]
+
+@router.post("/start_conversation/{other_user_id}", response_model=StartConversationResponse)
+async def start_conversation_with_user(
+    other_user_id: int,
+    current_user: Account = Depends(get_current_user)
+):
+    if other_user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot start conversation with yourself")
+
+    # Verificăm dacă utilizatorul există
+    other_user = await Account.get_or_none(id=other_user_id)
+    if not other_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Verificăm dacă există deja mesaje (opțional, poți omite dacă vrei să permiți duplicate)
+    existing_message = await Message.filter(
+        sender_id=current_user.id,
+        receiver_id=other_user_id
+    ).first()
+
+    if existing_message:
+        raise HTTPException(status_code=400, detail="Conversation already started")
+
+    # Creăm mesajul default
+    message = await Message.create(
+        sender_id=current_user,
+        receiver_id=other_user,
+        content="start conversation"
+    )
+
+    return StartConversationResponse(
+        message_id=message.id,
+        sender_id=current_user.id,
+        receiver_id=other_user_id,
+        content=message.content,
+        created_at=message.created_at
+    )

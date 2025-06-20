@@ -61,6 +61,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
 
       const data = await response.json();
       setConversations(data);
+
+      const response2 = await fetch(
+        `http://localhost:4000/messages/conversation_with/${user.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
+
+      const data2 = await response2.json();
+      alert(JSON.stringify(data2["quantum_key_data"], null, 2));
     } catch (error) {
       console.error("Error fetching users:", error);
     }

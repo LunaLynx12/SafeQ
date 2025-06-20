@@ -80,25 +80,26 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
     setLoadingUsers(false);
   };
 
-  const handleStartChat = async (userId: number) => {
+  const handleStartChat = async (otherUserId: number) => {
     try {
       const token = localStorage.getItem("auth_token");
-      const res = await fetch("http://localhost:4000/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ user_id: userId }),
-      });
+      const res = await fetch(
+        `http://localhost:4000/messages/start_conversation/${otherUserId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) throw new Error("Failed to create conversation");
 
       const newConversation = await res.json();
-      onSelectConversation(newConversation.id);
-      setIsUserListOpen(false);
+      onSelectConversation(newConversation.id); // Navigate to the newly created convo
+      setIsUserListOpen(false); // Close the modal
     } catch (err) {
-      console.error(err);
+      console.error("Error starting chat:", err);
     }
   };
 

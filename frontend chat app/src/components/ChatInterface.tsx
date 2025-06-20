@@ -112,7 +112,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
         content: content,
       };
 
-      const res = await fetch(`de inlocuit endpointu de send message`, {
+      const res = await fetch(`http://localhost:4000/messages/send_message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

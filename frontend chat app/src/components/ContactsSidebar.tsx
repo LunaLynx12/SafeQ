@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus, Settings, LogOut, User, Check, X } from "lucide-react";
 
 interface Conversation {
-  id: number;
-  name: string;
+  user_id: number;
+  username: string;
 }
 
 interface AvailableUser {
@@ -22,6 +22,8 @@ interface ContactsSidebarProps {
     username?: string;
   };
   onLogout: () => void;
+  // Add the new prop here
+  onConversationsUpdated: () => void;
 }
 
 const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
@@ -30,6 +32,8 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   onSelectConversation,
   user,
   onLogout,
+  // Destructure the new prop here
+  onConversationsUpdated,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isUserListOpen, setIsUserListOpen] = useState(false);
@@ -105,6 +109,7 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
       const newConversation = await res.json();
       if (newConversation.receiver_id) {
         onSelectConversation(newConversation.receiver_id);
+        onConversationsUpdated();
       } else {
         console.warn("No conversation ID received from backend");
       }
@@ -131,8 +136,10 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   });
 
   const filteredConversations = conversations.filter((conversation) => {
-    if (!conversation || !conversation.name) return false;
-    return conversation.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!conversation || !conversation.username) return false;
+    return conversation.username
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
   });
 
   return (
@@ -183,12 +190,12 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
         <div className="p-2">
           {filteredConversations.map((conversation) => (
             <motion.div
-              key={conversation.id}
+              key={conversation.user_id}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onSelectConversation(conversation.id)}
+              onClick={() => onSelectConversation(conversation.user_id)}
               className={`p-3 rounded-2xl cursor-pointer transition-all duration-200 mb-1 shadow-sm ${
-                selectedConversationId === conversation.id
+                selectedConversationId === conversation.user_id
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   : "bg-white/10 hover:bg-white/15 border border-white/10"
               }`}
@@ -206,7 +213,7 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-white truncate text-sm">
-                      {conversation.name || "Unknown User"}
+                      {conversation.username || "Unknown User"}
                     </h3>
                   </div>
 

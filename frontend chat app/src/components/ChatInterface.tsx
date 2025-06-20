@@ -23,8 +23,8 @@ interface Message {
 }
 
 interface Conversation {
-  id: number;
-  name: string;
+  user_id: number;
+  username: string;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
@@ -34,41 +34,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const selectedConversation =
-    conversations.find((c) => c.id === selectedConversationId) ?? null;
+    conversations.find((c) => c.user_id === selectedConversationId) ?? null;
+
+  const fetchContacts = async () => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        console.warn("No auth token found");
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:4000/messages/conversations/${user.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
+
+      const data = await response.json();
+      setConversations(data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
-
-    const fetchContacts = async () => {
-      try {
-        const token = localStorage.getItem("auth_token");
-        if (!token) {
-          console.warn("No auth token found");
-          return;
-        }
-
-        const response = await fetch(
-          `http://localhost:4000/messages/conversations/${user.id}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-
-        const data = await response.json();
-        setConversations(data);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-
     fetchContacts();
   }, [user.id]);
 
@@ -150,6 +149,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
             onSelectConversation={setSelectedConversationId}
             user={user}
             onLogout={onLogout}
+            onConversationsUpdated={fetchContacts}
           />
         </div>
 

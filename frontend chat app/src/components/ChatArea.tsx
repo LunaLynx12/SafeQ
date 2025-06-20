@@ -18,8 +18,8 @@ interface Message {
 }
 
 interface Conversation {
-  id: number;
-  name: string;
+  user_id: number;
+  username: string;
 }
 
 interface ChatAreaProps {
@@ -60,7 +60,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
 
           <div>
-            <h2 className="font-semibold text-white">{conversation.name}</h2>
+            <h2 className="font-semibold text-white">
+              {conversation.username}
+            </h2>
           </div>
         </div>
 
@@ -144,7 +146,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="flex-1 relative">
             <input
               type="text"
-              placeholder={`Message ${conversation.name}...`}
+              placeholder={`Message ${conversation.username}...`}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {

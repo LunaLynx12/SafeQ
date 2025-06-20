@@ -10,10 +10,9 @@ class Account(Model):
     kyber_public_key = fields.BinaryField(null=True)  # Store public key
     kyber_private_key_enc = fields.BinaryField(null=True)  # Encrypted private key
     kyber_salt = fields.BinaryField(null=True)  # Salt for key derivation
-    dilithium_private_key = fields.BinaryField(null=True)  # or whatever type suits your key
     dilithium_public_key = fields.BinaryField(null=True)
-    dilithium_salt = fields.BinaryField(null=True)
-
+    dilithium_private_key_enc = fields.BinaryField(null=True) 
+    
     def __str__(self):
         return self.username
 

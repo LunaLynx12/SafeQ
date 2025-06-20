@@ -11,6 +11,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from encryption import aes_encrypt2
 import os
+from encryption import aes_decrypt2
+from dilithium_py.dilithium import Dilithium2
+from dilithium import sign_message, save_key
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -34,6 +37,9 @@ async def register_user(request: RegisterRequest):
 
     # Generate Kyber key pair
     public_key, private_key = generate_kyber_keys()
+
+    # Generate Dilithium key pair
+    dilithium_sk, dilithium_pk = Dilithium2.keygen()
     
     # Generate random salt for key derivation
     salt = os.urandom(16)
@@ -50,6 +56,7 @@ async def register_user(request: RegisterRequest):
     
     # Encrypt private key
     encrypted_private_key = aes_encrypt2(encryption_key, private_key)
+    encrypted_dilithium_key = aes_encrypt2(encryption_key, dilithium_sk)
 
     user = await Account.create(
         username=request.username,
@@ -57,6 +64,8 @@ async def register_user(request: RegisterRequest):
         password_hash=get_password_hash(request.password),
         kyber_public_key=public_key,
         kyber_private_key_enc=encrypted_private_key,
+        dilithium_public_key=dilithium_pk,
+        dilithium_private_key_enc=encrypted_dilithium_key,
         kyber_salt=salt
     )
 
@@ -68,27 +77,46 @@ async def register_user(request: RegisterRequest):
     return {
         "message": "User created successfully",
         "user_id": user.id,
-        "kyber_public_key": public_key.hex()  # Optional: Return public key
+        "kyber_public_key": public_key.hex(),
+        "dilithium_public_key": dilithium_pk.hex()
     }
 
 
 @router.post("/login")
-async def login_user(request: LoginRequest):
-    try:
-        user = await Account.get(email=request.email)
-        if not verify_password(request.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-        # Generate a JWT token
-        access_token = create_access_token(data={"sub": user.id})
-
-        return {
-            "message": "Login successful",
-            "access_token": access_token,
-            "token_type": "bearer"
-        }
-    except DoesNotExist:
+async def login(request: LoginRequest):
+    user = await Account.get_or_none(email=request.email)
+    if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Decrypt private keys during login
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=user.kyber_salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    encryption_key = kdf.derive(request.password.encode())
+
+    try:
+        kyber_private_key = aes_decrypt2(encryption_key, user.kyber_private_key_enc)
+        dilithium_private_key = aes_decrypt2(encryption_key, user.dilithium_private_key_enc)
+        user_public_key = user.kyber_public_key
+        user_dilithium_pk = user.dilithium_public_key
+    except:
+        raise HTTPException(status_code=401, detail="Key decryption failed - possibly wrong password")
+
+    # Generate JWT token
+    access_token = create_access_token(
+        data={"sub": str(user.id)}
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "kyber_pk": user_public_key.hex(),
+        "dilithium_pk": user_dilithium_pk.hex()
+    }
     
 @router.get("/profile")
 async def get_profile(current_user: Account = Depends(get_current_user)):

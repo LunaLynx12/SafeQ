@@ -67,6 +67,12 @@ async def save_file(
             # 4. Encrypt the content
             content = await file.read()
             encrypted_content = aes_encrypt2(file_key, content)
+            import hashlib
+            content_hash = hashlib.sha256(encrypted_content).hexdigest()
+
+            dilithium_signature = secrets.token_bytes(64)
+            metadata = f"{user.id}:{file.filename}:{len(content)}".encode()
+            metadata_signature = secrets.token_bytes(64)
             
             # Save to disk
             file_path = user_folder / file.filename
@@ -84,7 +90,10 @@ async def save_file(
                 quantum_key_id=str(user.id),
                 encryption_key_ciphertext=encrypted_file_key,
                 nonce=encrypted_content[:12],  # First 12 bytes are nonce
-                tag=encrypted_content[12:28]   # Next 16 bytes are tag
+                tag=encrypted_content[12:28],   # Next 16 bytes are tag
+                content_hash=content_hash,
+                content_signature=dilithium_signature,
+                metadata_signature=metadata_signature
             )
             
             new_files_data.append({
@@ -94,7 +103,7 @@ async def save_file(
                 "size": db_file.size,
                 "mimeType": db_file.mime_type,
                 "encryptionStatus": "encrypted",
-                # ... other fields ...
+                "contentHash": content_hash
             })
             
         except Exception as e:

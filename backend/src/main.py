@@ -13,7 +13,6 @@ from routes import files_route as files_auths
 from routes import messages_route as messages_routes
 from routes import bb84_route as bb84_routes
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🚀 Starting up...")

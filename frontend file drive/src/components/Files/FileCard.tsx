@@ -17,9 +17,11 @@ import {
   Shield,
   ShieldCheck,
   Clock,
+  Loader2,
 } from 'lucide-react';
 import { FileItem } from '../../types';
 import { ShareModal } from './ShareModal';
+import axios from 'axios';
 
 interface FileCardProps {
   file: FileItem;
@@ -86,6 +88,7 @@ export const FileCard: React.FC<FileCardProps> = ({
 }) => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   const Icon = getFileIcon(file);
@@ -106,6 +109,47 @@ export const FileCard: React.FC<FileCardProps> = ({
     };
   }, []);
 
+  const handleDownload = async () => {
+    if (isFolder) return;
+    
+    setIsDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const response = await axios.get(
+        `http://127.0.0.1:4000/drive/download_encrypted/${file.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: 'blob',
+        }
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.name || 'download');
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // You might want to add toast notification here
+    } finally {
+      setIsDownloading(false);
+      setShowActionsMenu(false);
+    }
+  };
+
   const ActionsMenu = () => (
     <div
       ref={actionMenuRef}
@@ -113,14 +157,20 @@ export const FileCard: React.FC<FileCardProps> = ({
       onClick={(e) => e.stopPropagation()}
     >
       <button
-        onClick={() => {
-          console.log('Download', file.name);
-          setShowActionsMenu(false);
-        }}
-        className="w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center space-x-2"
+        onClick={handleDownload}
+        disabled={isDownloading || isFolder}
+        className={`w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center space-x-2 ${
+          isDownloading ? 'opacity-50 cursor-not-allowed' : ''
+        } ${
+          isFolder ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
       >
-        <Download className="w-4 h-4" />
-        <span>Download</span>
+        {isDownloading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Download className="w-4 h-4" />
+        )}
+        <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
       </button>
       <button
         onClick={() => {
@@ -190,7 +240,6 @@ export const FileCard: React.FC<FileCardProps> = ({
             <span className="text-sm text-gray-400">{formatFileSize(file.size)}</span>
           </div>
 
-
           <div className="flex-shrink-0 flex items-center space-x-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => {
@@ -258,7 +307,6 @@ export const FileCard: React.FC<FileCardProps> = ({
 
           <div className="flex items-center justify-between text-xs text-gray-400">
             <span>{formatFileSize(file.size)}</span>
-            
           </div>
 
           {file.version > 1 && (
@@ -282,7 +330,7 @@ export const FileCard: React.FC<FileCardProps> = ({
             className={`p-1 rounded-md transition-colors ${
               file.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
             }`}
-          >
+            >
             <Star className="w-4 h-4" fill={file.isStarred ? 'currentColor' : 'none'} />
           </button>
 

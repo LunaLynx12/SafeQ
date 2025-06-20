@@ -24,19 +24,19 @@ interface UserSettingsProps {
 const mockQuantumKeys: QuantumKey[] = [
   {
     id: '1',
-    name: 'Primary Encryption Key',
+    name: 'Key Sharing Encryption Key',
     algorithm: 'CRYSTALS-Kyber',
     publicKey: 'kyber_pk_1a2b3c4d5e6f...',
-    createdAt: new Date('2024-01-15'),
+    createdAt: new Date('2025-06-20'),
     isActive: true,
   },
   {
     id: '2',
-    name: 'Backup Key',
+    name: 'File Sharing Key',
     algorithm: 'CRYSTALS-Dilithium',
     publicKey: 'dilithium_pk_9z8y7x6w5v...',
-    createdAt: new Date('2024-01-10'),
-    isActive: false,
+    createdAt: new Date('2025-06-20'),
+    isActive: true,
   },
 ];
 

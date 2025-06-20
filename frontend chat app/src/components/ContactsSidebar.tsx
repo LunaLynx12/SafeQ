@@ -2,30 +2,9 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Plus, Settings, LogOut, User, Users } from "lucide-react";
 
-interface Participant {
-  id: number;
-  name: string;
-  avatar?: string;
-  status?: "online" | "offline" | "away";
-}
-
-interface Message {
-  id: number;
-  senderId: number;
-  text: string;
-  timestamp: string;
-  status?: "sent" | "delivered" | "read";
-}
-
 interface Conversation {
   id: number;
   name: string;
-  isGroup: boolean;
-  participants: Participant[];
-  messages: Message[];
-  lastMessage?: string;
-  unreadCount?: number;
-  lastSeen?: string;
 }
 
 interface ContactsSidebarProps {
@@ -50,8 +29,11 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [profileUsername, setProfileUsername] = useState<string>("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-
+  const [isUserListOpen, setIsUserListOpen] = useState(false);
+  const [users, setUsers] = useState<Conversation[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   // Fetch username from profile endpoint
+
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("auth_token");
@@ -85,19 +67,49 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
     fetchProfile();
   }, []);
 
-  const filteredConversations = conversations.filter((conversation) =>
-    conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleNewChatClick = async () => {
+    setIsUserListOpen(true);
+    setLoadingUsers(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("http://localhost:4000/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "online":
-        return "bg-green-500";
-      case "away":
-        return "bg-yellow-500";
-      case "offline":
-      default:
-        return "bg-slate-500";
+  const handleStartChat = async (userId: number) => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(
+        "http://localhost:4000/ de completat aici endpoint",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to create conversation");
+
+      const newConversation = await res.json();
+      // Call a prop to update the parent with the new conversation
+      onSelectConversation(newConversation.id);
+      setIsUserListOpen(false);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -151,7 +163,7 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
-          {filteredConversations.map((conversation) => (
+          {conversations.map((conversation) => (
             <motion.div
               key={conversation.id}
               whileHover={{ scale: 1.02 }}
@@ -167,53 +179,25 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
                 {/* Avatar */}
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    {conversation.isGroup ? (
-                      <Users className="h-6 w-6 text-white" />
-                    ) : conversation.participants[0]?.avatar ? (
-                      <img
-                        src={conversation.participants[0].avatar}
-                        alt={conversation.participants[0].name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-6 w-6 text-white" />
-                    )}
+                    <User className="h-6 w-6 text-white" />
                   </div>
 
-                  {/* Status indicator for individual chats */}
-                  {!conversation.isGroup &&
-                    conversation.participants[0]?.status && (
-                      <div
-                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${getStatusColor(
-                          conversation.participants[0].status
-                        )}`}
-                      />
-                    )}
+                  {/* Optional: Static status dot */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 bg-green-500" />
                 </div>
 
-                {/* Conversation Info */}
+                {/* Contact Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-white truncate text-sm">
                       {conversation.name}
                     </h3>
-                    {conversation.lastSeen && (
-                      <span className="text-xs text-slate-400 flex-shrink-0">
-                        {conversation.lastSeen}
-                      </span>
-                    )}
                   </div>
 
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-slate-400 truncate">
-                      {conversation.lastMessage}
+                      No messages yet.
                     </p>
-                    {conversation.unreadCount &&
-                      conversation.unreadCount > 0 && (
-                        <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5 min-w-[1.25rem] text-center flex-shrink-0">
-                          {conversation.unreadCount}
-                        </span>
-                      )}
                   </div>
                 </div>
               </div>
@@ -224,10 +208,38 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
 
       {/* New Chat Button */}
       <div className="flex-shrink-0 p-4 border-t border-white/10">
-        <button className="w-full flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl">
+        <button
+          onClick={handleNewChatClick}
+          className="w-full flex items-center justify-center space-x-2 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl"
+        >
           <Plus className="h-4 w-4" />
           <span className="text-sm">New Chat</span>
         </button>
+        {isUserListOpen && (
+          <div className="absolute z-50 bottom-16 left-4 right-4 bg-white rounded-lg shadow-xl p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-black">
+              Start a new chat
+            </h3>
+            {loadingUsers ? (
+              <p className="text-sm text-gray-500">Loading users...</p>
+            ) : (
+              <ul className="max-h-60 overflow-y-auto">
+                {users.map((user) => (
+                  <li
+                    key={user.id}
+                    onClick={() => handleStartChat(user.id)}
+                    className="flex items-center space-x-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 overflow-hidden">
+                      <User className="w-4 h-4 text-white mx-auto my-auto" />
+                    </div>
+                    <span className="text-sm text-black">{user.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

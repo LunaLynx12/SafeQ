@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import ContactsSidebar from "@/components/ContactsSidebar";
 import ChatArea from "@/components/ChatArea";
@@ -14,176 +14,122 @@ interface ChatInterfaceProps {
   onLogout: () => void;
 }
 
-interface Participant {
-  id: number;
-  name: string;
-  avatar?: string;
-  status?: "online" | "offline" | "away";
-}
-
 interface Message {
   id: number;
-  senderId: number;
-  text: string;
-  timestamp: string;
-  status?: "sent" | "delivered" | "read";
+  sender_id: number;
+  receiver_id: number;
+  content: string;
+  created_at: string;
 }
 
 interface Conversation {
   id: number;
   name: string;
-  isGroup: boolean;
-  participants: Participant[];
-  messages: Message[];
-  lastMessage?: string;
-  unreadCount?: number;
-  lastSeen?: string;
 }
-
-const participantsData: Participant[] = [
-  {
-    id: 1,
-    name: "You",
-    avatar:
-      "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2",
-    status: "online",
-  },
-  {
-    id: 2,
-    name: "Alice Cooper",
-    avatar:
-      "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2",
-    status: "online",
-  },
-  {
-    id: 3,
-    name: "Bob Wilson",
-    avatar:
-      "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2",
-    status: "away",
-  },
-  {
-    id: 4,
-    name: "Charlie Brown",
-    avatar:
-      "https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2",
-    status: "offline",
-  },
-  {
-    id: 5,
-    name: "David Miller",
-    avatar:
-      "https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2",
-    status: "online",
-  },
-];
-
-const conversationsData: Conversation[] = [
-  {
-    id: 1,
-    name: "Developer's battlefield",
-    isGroup: true,
-    participants: [
-      participantsData[0],
-      participantsData[1],
-      participantsData[2],
-      participantsData[3],
-    ],
-    lastMessage: "Let's meet online tonight.",
-    unreadCount: 3,
-    lastSeen: "10:04 AM",
-    messages: [
-      {
-        id: 1,
-        senderId: 2,
-        text: "Hey team, ready for the exam? 📚",
-        timestamp: "10:00 AM",
-        status: "read",
-      },
-      {
-        id: 2,
-        senderId: 3,
-        text: "Almost there! Need to revise the backend concepts.",
-        timestamp: "10:02 AM",
-        status: "read",
-      },
-      {
-        id: 3,
-        senderId: 4,
-        text: "Let's meet online tonight for a final review session.",
-        timestamp: "10:03 AM",
-        status: "delivered",
-      },
-      {
-        id: 4,
-        senderId: 1,
-        text: "I'm down for it! What time works for everyone?",
-        timestamp: "10:04 AM",
-        status: "sent",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Alice Cooper",
-    isGroup: false,
-    participants: [participantsData[1]],
-    lastMessage: "All good! Just chilling.",
-    lastSeen: "9:05 AM",
-    messages: [
-      {
-        id: 5,
-        senderId: 1,
-        text: "Hey Alice, how's it going?",
-        timestamp: "9:00 AM",
-        status: "read",
-      },
-      {
-        id: 6,
-        senderId: 2,
-        text: "All good! Just chilling on this beautiful day ☀️",
-        timestamp: "9:05 AM",
-        status: "delivered",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Charlie Brown",
-    isGroup: false,
-    participants: [participantsData[3]],
-    lastMessage: "All good! Just chilling.",
-    lastSeen: "9:05 AM",
-    messages: [
-      {
-        id: 7,
-        senderId: 1,
-        text: "Hey Charlie, how's it going?",
-        timestamp: "9:00 AM",
-        status: "read",
-      },
-      {
-        id: 8,
-        senderId: 4,
-        text: "All good! Just chilling on this beautiful day ☀️",
-        timestamp: "9:05 AM",
-        status: "delivered",
-      },
-    ],
-  },
-];
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
   const [selectedConversationId, setSelectedConversationId] =
-    useState<number>(1);
+    useState<number>(-1);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const selectedConversation = conversationsData.find(
-    (c) => c.id === selectedConversationId
-  )!;
+  const selectedConversation =
+    conversations.find((c) => c.id === selectedConversationId) ?? null;
 
-  function handleSendMessage(message: string) {
-    // In a real app, this would send the message
-    console.log(`Send message "${message}" to "${selectedConversation.name}"`);
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchContacts = async () => {
+      try {
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          console.warn("No auth token found");
+          return;
+        }
+
+        const response = await fetch(
+          `http://localhost:4000/messages/conversations/${user.id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        const data = await response.json();
+        setConversations(data);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchContacts();
+  }, [user.id]);
+
+  useEffect(() => {
+    if (selectedConversationId < 0) return;
+
+    async function fetchMessages() {
+      try {
+        const token = localStorage.getItem("auth_token");
+        const res = await fetch(
+          `http://localhost:4000/messages/messages_with/${selectedConversationId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch messages");
+
+        const data: Message[] = await res.json();
+        setMessages(data);
+      } catch (error) {
+        console.error(error);
+        setMessages([]);
+      }
+    }
+    fetchMessages();
+  }, [selectedConversationId]);
+
+  async function handleSendMessage(content: string) {
+    if (!content.trim()) return;
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token) throw new Error("No auth token");
+
+      // Build message object to POST
+      const newMessage = {
+        receiver_id: selectedConversationId,
+        content: content,
+      };
+
+      const res = await fetch(`de inlocuit endpointu de send message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newMessage),
+      });
+
+      if (!res.ok) throw new Error("Failed to send message");
+
+      const savedMessage = await res.json(); // backend should return saved message with id and timestamp
+
+      // Update messages state locally with the new message
+      setMessages((prev) => [...prev, savedMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   }
 
   return (
@@ -199,7 +145,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
         {/* Contacts Sidebar - Fixed width */}
         <div className="w-80 flex-shrink-0 h-full">
           <ContactsSidebar
-            conversations={conversationsData}
+            conversations={conversations}
             selectedConversationId={selectedConversationId}
             onSelectConversation={setSelectedConversationId}
             user={user}
@@ -209,11 +155,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout }) => {
 
         {/* Chat Area - Takes remaining space */}
         <div className="flex-1 h-full">
-          <ChatArea
-            conversation={selectedConversation}
-            participants={participantsData}
-            onSendMessage={handleSendMessage}
-          />
+          {selectedConversation ? (
+            <ChatArea
+              messages={messages}
+              currentUserId={user.id}
+              conversation={selectedConversation}
+              onSendMessage={handleSendMessage}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-white">
+              Select a conversation to start chatting
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

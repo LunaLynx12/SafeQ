@@ -7,41 +7,65 @@ interface UserData {
   id: string;
   email: string;
   username?: string;
-  token?: string;
 }
 
 function App() {
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already authenticated
-    const token = localStorage.getItem("auth_token");
-    const userData = localStorage.getItem("user_data");
+  const loadUserFromToken = async () => {
+    setIsLoading(true);
 
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser({ ...parsedUser, token });
-      } catch (error) {
-        console.error("Failed to parse user data:", error);
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("user_data");
-      }
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
     }
 
-    setIsLoading(false);
+    try {
+      const res = await fetch("http://localhost:4000/auth/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch profile");
+      }
+
+      const profile = await res.json();
+
+      const userData: UserData = {
+        id: profile.id,
+        email: profile.email,
+        username: profile.username,
+      };
+
+      setUser(userData);
+      localStorage.setItem("user_data", JSON.stringify(userData));
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user_data");
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUserFromToken();
   }, []);
 
-  const handleAuthenticated = (authData: any) => {
-    const userData: UserData = {
-      id: authData.user?.id || authData.id,
-      email: authData.user?.email || authData.email,
-      username: authData.user?.username || authData.username,
-      token: authData.token,
-    };
+  const handleAuthenticated = async (authData: any) => {
+    // Save token from login response
+    if (authData.access_token) {
+      localStorage.setItem("auth_token", authData.access_token);
+    } else if (authData.token) {
+      localStorage.setItem("auth_token", authData.token);
+    }
 
-    setUser(userData);
+    // Refresh user info by fetching profile
+    await loadUserFromToken();
   };
 
   const handleLogout = () => {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Plus, Settings, LogOut, User, Users } from "lucide-react";
+import { Search, Plus, Settings, LogOut, User } from "lucide-react";
 
 interface Conversation {
   id: number;
@@ -27,56 +27,30 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   onLogout,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [profileUsername, setProfileUsername] = useState<string>("");
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isUserListOpen, setIsUserListOpen] = useState(false);
   const [users, setUsers] = useState<Conversation[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  // Fetch username from profile endpoint
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        setIsLoadingProfile(false);
-        return;
-      }
-
-      try {
-        const response = await fetch("http://localhost:4000/auth/profile", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.ok) {
-          const profileData = await response.json();
-          setProfileUsername(profileData.username || profileData.name || "");
-        } else {
-          console.error("Failed to fetch profile:", response.statusText);
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+  const displayName = user?.username || user?.email || "Unknown User";
+  const displayStatus = "Online";
 
   const handleNewChatClick = async () => {
-    setIsUserListOpen(true);
+    if (!user || !user.id) {
+      console.warn("User ID is missing, cannot fetch available users");
+      return;
+    }
     setLoadingUsers(true);
+    setIsUserListOpen(true);
     try {
       const token = localStorage.getItem("auth_token");
-      const res = await fetch("http://localhost:4000/users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        `http://localhost:4000/messages/available_users/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const data = await res.json();
       setUsers(data);
     } catch (err) {
@@ -90,32 +64,24 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
   const handleStartChat = async (userId: number) => {
     try {
       const token = localStorage.getItem("auth_token");
-      const res = await fetch(
-        "http://localhost:4000/ de completat aici endpoint",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
+      const res = await fetch("http://localhost:4000/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
 
       if (!res.ok) throw new Error("Failed to create conversation");
 
       const newConversation = await res.json();
-      // Call a prop to update the parent with the new conversation
       onSelectConversation(newConversation.id);
       setIsUserListOpen(false);
     } catch (err) {
       console.error(err);
     }
   };
-
-  // Determine what to display as the user identifier
-  const displayName = profileUsername || user.username || user.email;
-  const displayStatus = isLoadingProfile ? "Loading..." : "Online";
 
   return (
     <div className="flex flex-col h-full bg-black/20 border-r border-white/10">
@@ -181,8 +147,6 @@ const ContactsSidebar: React.FC<ContactsSidebarProps> = ({
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                     <User className="h-6 w-6 text-white" />
                   </div>
-
-                  {/* Optional: Static status dot */}
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 bg-green-500" />
                 </div>
 
